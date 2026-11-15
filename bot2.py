@@ -442,6 +442,31 @@ def handle_org(call):
             reply_markup=kb
         )
         bot.answer_callback_query(call.id)
+        @bot.message_handler(commands=['stats'])
+def show_stats(message):
+    # Доступ только для админа (замени на свой ID)
+    if str(message.from_user.id) != '230961613':
+        bot.reply_to(message, "⛔ У тебя нет доступа к этой команде.")
+        return
+
+    total_games = len(games)
+    total_participants = sum(len(g['participants']) for g in games.values())
+    total_draws = sum(1 for g in games.values() if g['results'])
+    
+    text = (
+        f"📊 **Статистика бота**\n\n"
+        f"🎮 Всего создано игр: {total_games}\n"
+        f"👥 Всего участников (во всех играх): {total_participants}\n"
+        f"🎲 Проведено жеребьёвок: {total_draws}\n\n"
+    )
+
+    if total_games > 0:
+        text += "**Детали по играм:**\n"
+        for code, game in games.items():
+            status = "✅ Жеребьёвка проведена" if game['results'] else "⏳ Ожидание"
+            text += f"• Игра `{code}`: {len(game['participants'])} чел. ({status})\n"
+
+    bot.reply_to(message, text, parse_mode='Markdown')
 @bot.message_handler(func=lambda m: True)
 def echo(message):
     bot.reply_to(message, f"Ты написал: {message.text}")
