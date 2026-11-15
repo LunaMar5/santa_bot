@@ -442,7 +442,7 @@ def handle_org(call):
             reply_markup=kb
         )
         bot.answer_callback_query(call.id)
-        @bot.message_handler(commands=['stats'])
+@bot.message_handler(commands=['stats'])
 def show_stats(message):
     # Доступ только для админа (замени на свой ID)
     if str(message.from_user.id) != '230961613':
@@ -465,8 +465,8 @@ def show_stats(message):
         for code, game in games.items():
             status = "✅ Жеребьёвка проведена" if game['results'] else "⏳ Ожидание"
             text += f"• Игра `{code}`: {len(game['participants'])} чел. ({status})\n"
-
     bot.reply_to(message, text, parse_mode='Markdown')
+
 @bot.message_handler(func=lambda m: True)
 def echo(message):
     bot.reply_to(message, f"Ты написал: {message.text}")
