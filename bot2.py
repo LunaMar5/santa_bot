@@ -49,7 +49,8 @@ def new_game(message):
     games[code] = {
         'organizer_id': message.from_user.id,
         'participants': {user_id: name},  # организатор сразу в игре
-        'results': {}
+        'results': {},
+        'wishlists': {}  # сразу создаем пустой словарь для вишлистов
     }
     save_games()
 
@@ -68,6 +69,17 @@ def new_game(message):
         parse_mode='Markdown',
         reply_markup=kb
     )
+
+    # Сразу спрашиваем вишлист у организатора
+    msg = bot.reply_to(
+        message,
+        f"Отлично, **{name}**! 🎁\n\n"
+        f"А теперь напиши свой **вишлист** (что бы ты хотел получить в подарок).\n"
+        f"Это увидит только тот, кто будет тебе дарить.\n\n"
+        f"Если не хочешь писать — отправь слово **«Пропустить»**.",
+        parse_mode='Markdown'
+    )
+    bot.register_next_step_handler(msg, save_wishlist, code)
 # ---------- Присоединение ----------
 @bot.message_handler(commands=['join'])
 def join_game(message):
@@ -124,7 +136,7 @@ def save_name(message, code):
     )
     bot.register_next_step_handler(msg, save_wishlist, code)
     
-    # ---------- Присоединение: шаг 3 — сохраняем вишлист ----------
+  # ---------- Присоединение: шаг 3 — сохраняем вишлист ----------
 def save_wishlist(message, code):
     user_id = str(message.from_user.id)
     wishlist = message.text.strip()
@@ -139,22 +151,18 @@ def save_wishlist(message, code):
     elif len(wishlist) > 300:
         wishlist = wishlist[:300] + "..."
 
-    # Сохраняем вишлист в отдельный словарь (чтобы не ломать старую структуру)
     if 'wishlists' not in games[code]:
         games[code]['wishlists'] = {}
     games[code]['wishlists'][user_id] = wishlist
     save_games()
 
-    kb = types.InlineKeyboardMarkup()
-    kb.add(types.InlineKeyboardButton('📊 Статус игры', callback_data=f'org_status:{code}'))
-    kb.add(types.InlineKeyboardButton('🎁 Мой результат', callback_data='menu_myresult'))
-
+    # Отправляем подтверждение
     bot.reply_to(
         message,
-        f"✅ Ты в игре `{code}` как **{games[code]['participants'][user_id]}**.\n"
+        f"✅ Твой вишлист сохранен!\n\n"
+        f"Ты в игре `{code}` как **{games[code]['participants'][user_id]}**.\n"
         f"Участников: {len(games[code]['participants'])}",
-        parse_mode='Markdown',
-        reply_markup=kb
+        parse_mode='Markdown'
     )
 # ---------- Запуск жеребьёвки: показываем список ----------
 @bot.message_handler(commands=['startgame'])
