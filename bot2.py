@@ -94,7 +94,7 @@ def join_game(message):
     )
     bot.register_next_step_handler(msg, save_name, code)
 
-# ---------- Присоединение: шаг 2 — сохраняем имя ----------
+# ---------- Присоединение: шаг 2 — сохраняем имя и просим вишлист ----------
 def save_name(message, code):
     user_id = str(message.from_user.id)
     name = message.text.strip()
@@ -109,7 +109,40 @@ def save_name(message, code):
         bot.reply_to(message, "Имя должно быть от 1 до 50 символов. Попробуй ещё раз: /join " + code)
         return
 
+    # Сохраняем имя (пока без вишлиста)
     games[code]['participants'][user_id] = name
+    save_games()
+
+    # Спрашиваем вишлист
+    msg = bot.reply_to(
+        message,
+        f"Отлично, **{name}**! 🎁\n\n"
+        f"А теперь напиши свой **вишлист** (что бы ты хотел получить в подарок).\n"
+        f"Это увидит только тот, кто будет тебе дарить.\n\n"
+        f"Если не хочешь писать — отправь слово **«Пропустить»**.",
+        parse_mode='Markdown'
+    )
+    bot.register_next_step_handler(msg, save_wishlist, code)
+    
+    # ---------- Присоединение: шаг 3 — сохраняем вишлист ----------
+def save_wishlist(message, code):
+    user_id = str(message.from_user.id)
+    wishlist = message.text.strip()
+
+    if code not in games:
+        return
+    if user_id not in games[code]['participants']:
+        return
+
+    if wishlist.lower() in ['пропустить', 'пропуск', 'нет', 'skip', '-']:
+        wishlist = "Без вишлиста (на свой вкус)"
+    elif len(wishlist) > 300:
+        wishlist = wishlist[:300] + "..."
+
+    # Сохраняем вишлист в отдельный словарь (чтобы не ломать старую структуру)
+    if 'wishlists' not in games[code]:
+        games[code]['wishlists'] = {}
+    games[code]['wishlists'][user_id] = wishlist
     save_games()
 
     kb = types.InlineKeyboardMarkup()
@@ -118,7 +151,7 @@ def save_name(message, code):
 
     bot.reply_to(
         message,
-        f"✅ Ты в игре `{code}` как **{name}**.\n"
+        f"✅ Ты в игре `{code}` как **{games[code]['participants'][user_id]}**.\n"
         f"Участников: {len(games[code]['participants'])}",
         parse_mode='Markdown',
         reply_markup=kb
@@ -210,13 +243,19 @@ def handle_confirm(call):
         game['results'][giver_id] = game['participants'][recipient_id]
     save_games()
 
-    # Рассылка
+        # Рассылка
     failed = []
-    for giver_id, recipient_name in game['results'].items():
+    wishlists = game.get('wishlists', {})
+    
+    for giver_id, recipient_id in zip(participants, result):
+        recipient_name = game['participants'][recipient_id]
+        wishlist = wishlists.get(recipient_id, "Без вишлиста (на свой вкус)")
+        
         try:
             bot.send_message(
                 int(giver_id),
                 f"🎅 Ты — Тайный Санта для: **{recipient_name}**\n\n"
+                f"📝 **Вишлист:**\n{wishlist}\n\n"
                 f"Не забудь подготовить подарок! 🎁",
                 parse_mode='Markdown'
             )
