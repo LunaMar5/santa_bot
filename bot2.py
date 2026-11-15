@@ -1,3 +1,5 @@
+from flask import Flask
+from threading import Thread
 import telebot
 from telebot import types
 import random
@@ -444,5 +446,22 @@ def handle_org(call):
 def echo(message):
     bot.reply_to(message, f"Ты написал: {message.text}")
 
-print("Бот запущен...")
-bot.infinity_polling()
+
+# ---------- Веб-сервер для Render (чтобы не засыпал) ----------
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Бот работает!"
+
+def run_web():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run_web)
+    t.start()
+
+if __name__ == '__main__':
+    keep_alive()  # Запускаем веб-сервер в фоне
+    print("Бот запущен...")
+    bot.infinity_polling()
